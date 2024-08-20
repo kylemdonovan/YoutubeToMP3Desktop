@@ -23,6 +23,7 @@ class DownloaderThread(QThread):
             }],
             'outtmpl': os.path.join(self.output_path, '%(title)s.%(ext)s'),
             'progress_hooks': [self.progress_hook],
+            'verbose': True,  # Enable verbose logging
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -36,6 +37,9 @@ class DownloaderThread(QThread):
             self.progress_signal.emit(progress)
 
 class YouTubeDownloaderApp(QWidget):
+    # Initializes default output path as a class attribute
+    default_output_path = None
+
     def __init__(self):
         super().__init__()
         self.initUI()
@@ -45,12 +49,14 @@ class YouTubeDownloaderApp(QWidget):
 
         self.url_input = QLineEdit()
         self.add_button = QPushButton('Add URL')
+        self.settings_button = QPushButton('Change Directory')
         self.url_list = QListWidget()
         self.download_button = QPushButton('Download')
         self.progress_bar = QProgressBar()
 
         layout.addWidget(self.url_input)
         layout.addWidget(self.add_button)
+        layout.addWidget(self.settings_button)
         layout.addWidget(self.url_list)
         layout.addWidget(self.download_button)
         layout.addWidget(self.progress_bar)
@@ -60,6 +66,9 @@ class YouTubeDownloaderApp(QWidget):
 
         self.add_button.clicked.connect(self.add_url)
         self.download_button.clicked.connect(self.start_download)
+
+        self.settings_button.clicked.connect(self.change_default_directory)
+        self.resize(800, 800)
 
     def add_url(self):
         url = self.url_input.text()
@@ -72,14 +81,15 @@ class YouTubeDownloaderApp(QWidget):
         if not urls:
             return
 
-        output_path = QFileDialog.getExistingDirectory(self, "Select Output Directory")
+        output_path = self.default_output_path if self.default_output_path else None
         if not output_path:
-            return
+            output_path = QFileDialog.getExistingDirectory(self, "Select Output Directory")
 
-        self.downloader_thread = DownloaderThread(urls, output_path)
-        self.downloader_thread.progress_signal.connect(self.update_progress)
-        self.downloader_thread.finished_signal.connect(self.download_finished)
-        self.downloader_thread.start()
+        if output_path:
+            self.downloader_thread = DownloaderThread(urls, output_path)
+            self.downloader_thread.progress_signal.connect(self.update_progress)
+            self.downloader_thread.finished_signal.connect(self.download_finished)
+            self.downloader_thread.start()
 
     def update_progress(self, progress):
         self.progress_bar.setValue(progress)
@@ -87,6 +97,11 @@ class YouTubeDownloaderApp(QWidget):
     def download_finished(self):
         self.progress_bar.setValue(100)
         self.url_list.clear()
+
+    def change_default_directory(self):
+        new_dir = QFileDialog.getExistingDirectory(self, "Select Default Download Directory")
+        if new_dir:
+            self.default_output_path = new_dir  # Updates the default directory
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
