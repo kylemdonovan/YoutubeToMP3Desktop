@@ -107,4 +107,4 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = YouTubeDownloaderApp()
     ex.show()
-    sys.exit(app.exec_())
+    app.exec_()
